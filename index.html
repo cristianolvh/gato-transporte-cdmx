@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gato CDMX</title>
+    <style>
+        :root {
+            --morado: #6a1b9a;
+            --morado-light: #9c4dcc;
+            --amarillo: #ffd600;
+            --rojo: #d32f2f;
+            --gris-borde: #e0e0e0;
+            --bg-page: #e1bee7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-page);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-container {
+            width: 95vw;
+            max-width: 850px;
+            background: white;
+            border: 15px solid var(--morado);
+            border-radius: 40px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--morado);
+            padding-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 0.9rem;
+            color: var(--morado);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .route-badge {
+            background: var(--amarillo);
+            color: black;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.4rem;
+            padding: 8px 30px;
+            border-radius: 8px;
+            display: inline-block;
+            border: 2px solid #000;
+        }
+
+        .content-layout {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 20px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        .cell {
+            width: 90px;
+            height: 90px;
+            background: white;
+            border: 4px solid var(--morado);
+            border-radius: 15px;
+            font-size: 3rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cell.x { color: var(--rojo); }
+        .cell.o { color: var(--morado); }
+        .cell.blocked { background: #bbb; border-color: #777; }
+
+        .mod-alert {
+            width: 100%;
+            background: #fff9c4;
+            border: 2px dashed #fbc02d;
+            border-radius: 15px;
+            padding: 12px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .info-section {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .info-card {
+            background: white;
+            border: 1px solid var(--gris-borde);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .info-card b { color: var(--morado); }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .btn-mode { background: #eee; color: #333; }
+        .btn-mode.active { background: #a639ff; color: white; }
+        .btn-reset { background: #333; color: white; grid-column: span 2; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        @media (max-width: 700px) {
+            .content-layout { flex-direction: column; }
+            .main-container { overflow-y: auto; height: auto; max-height: 95vh; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="header">
+        <h1>RUTA EDOMEX-CDMX</h1>
+        <div class="route-badge" id="routeSign">ECATEPEC - POLITÉCNICO</div>
+    </div>
+
+    <div class="content-layout">
+        <div class="game-section">
+            <div class="board" id="board"></div>
+            <div class="mod-alert">
+                <strong id="modName">¡SÚBALE!</strong>
+                <p id="modDesc" style="font-size: 0.85rem;">Selecciona una casilla para iniciar el viaje.</p>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-card">
+                Turno: <b id="currentPlayerDisplay">X</b> 
+            </div>
+            <div class="info-card">
+                Partida: <b id="roundNum">1</b>/3 
+            </div>
+            <div class="info-card">
+                Marcador: X: <b id="scoreX">0</b> - O: <b id="scoreO">0</b>
+            </div>
+            <div class="controls">
+                <button id="btnPvP" class="btn btn-mode active" onclick="setMode('pvp')">👤 vs 👤</button>
+                <button id="btnBot" class="btn btn-mode" onclick="setMode('bot')">👤 vs 🤖</button>
+                <button class="btn btn-reset" onclick="resetGame()">🔄 Reiniciar Todo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let board = Array(9).fill("");
+    let currentPlayer = "X";
+    let gameMode = "pvp";
+    let wins = { X: 0, O: 0 };
+    let round = 1;
+    let bonusUber = null;
+    let extraTurn = false;
+    let history = { X: [], O: [] };
+    let isStealing = false;
+    let isLocked = false;
+
+    const routes = ["ECATEPEC - POLITÉCNICO", "SANTA MARTHA - CUAUTITLÁN"];
+
+    function setMode(m) {
+        if (!board.every(c => c === "")) return;
+        gameMode = m;
+        document.getElementById('btnPvP').classList.toggle('active', m === 'pvp');
+        document.getElementById('btnBot').classList.toggle('active', m === 'bot');
+    }
+
+    function drawBoard() {
+        const bDiv = document.getElementById("board");
+        bDiv.innerHTML = "";
+        board.forEach((val, i) => {
+            const btn = document.createElement("div");
+            btn.className = `cell ${val === 'X' ? 'x' : val === 'O' ? 'o' : val === '-' ? 'blocked' : ''}`;
+            btn.textContent = val === "-" ? "" : val;
+            btn.onclick = () => handleMove(i);
+            bDiv.appendChild(btn);
+        });
+        document.getElementById("scoreX").textContent = wins.X;
+        document.getElementById("scoreO").textContent = wins.O;
+        document.getElementById("roundNum").textContent = round;
+        document.getElementById("routeSign").textContent = routes[(round-1)%2];
+        document.getElementById("currentPlayerDisplay").textContent = currentPlayer;
+    }
+
+    function handleMove(i) {
+        if (isLocked) return;
+
+        // Lógica de Robo (Señor de los Dulces)
+        if (isStealing) {
+            let opponent = currentPlayer === "X" ? "O" : "X";
+            if (board[i] === opponent) {
+                board[i] = currentPlayer;
+                history[currentPlayer].push(i);
+                history[opponent] = history[opponent].filter(idx => idx !== i);
+                isStealing = false; // Se apaga la bandera inmediatamente
+                drawBoard();
+                checkPostMod();
+            }
+            return;
+        }
+
+        if (board[i] !== "") return;
+
+        board[i] = currentPlayer;
+        history[currentPlayer].push(i);
+        drawBoard(); 
+        
+        isLocked = true;
+        
+        setTimeout(() => {
+            applyModifier(i);
+            drawBoard();
+            setTimeout(() => {
+                isLocked = false;
+                // Si el modificador no activó el modo robo, seguimos normal
+                if (!isStealing) checkPostMod();
+            }, 600);
+        }, 400);
+    }
+
+    function applyModifier(lastIdx) {
+        const mods = [
+            { n: "SEMÁFORO EN VERDE", d: "El chofer le metió pata. ¡Tiras de nuevo!" },
+            { n: "¡AGUAS CON EL BACHE!", d: "Todas las fichas saltaron de sus asientos." },
+            { n: "ASIENTO APARTADO", d: "Alguien puso una mochila. Casilla bloqueada." },
+            { n: "BLOQUEOS POR MANIFESTACIÓN", d: "Bloqueo vial. Tu última tirada se borró." },
+            { n: "EL SEÑOR DE LOS DULCES", d: "Róbale una casilla al rival ahora mismo." },
+            { n: "TE EQUIVOCASTE DE RUTA", d: "Tu ficha se cambió de bando." },
+            { n: "CÁMBIENSE DE COMBI", d: "¡Falla mecánica! El tablero quedó vacío." },
+            { n: "¡BAJAAAAAN!", d: "Se bajaron algunas fichas del tablero." },
+            { n: "ME PASA MI PASAJE", d: "Tu ficha se pasó a otro lugar del camión." }
+        ];
+
+        const mIdx = Math.floor(Math.random() * mods.length);
+        const mod = mods[mIdx];
+        document.getElementById("modName").textContent = mod.n;
+        document.getElementById("modDesc").textContent = mod.d;
+
+        switch(mIdx) {
+            case 0: extraTurn = true; break;
+            case 1: 
+                let allFichas = [];
+                board.forEach((v, i) => { if(v!=="" && v!=="-") allFichas.push(v); });
+                board = board.map(v => v === "-" ? "-" : "");
+                allFichas.forEach(f => {
+                    let empties = board.map((v, i) => i).filter(i => board[i] === "");
+                    if(empties.length) {
+                        let target = empties[Math.floor(Math.random() * empties.length)];
+                        board[target] = f;
+                    }
+                });
+                break;
+            case 2:
+                let empties = board.map((v, i) => i).filter(i => board[i] === "");
+                if(empties.length) board[empties[Math.floor(Math.random()*empties.length)]] = "-";
+                break;
+            case 3: board[lastIdx] = ""; history[currentPlayer].pop(); break;
+            case 4: 
+                let opp = currentPlayer === "X" ? "O" : "X";
+                if(board.includes(opp)) {
+                    isStealing = true;
+                    // Si es bot y le toca robar
+                    if(gameMode === 'bot' && currentPlayer === 'O') {
+                        setTimeout(() => {
+                           let targets = board.map((v, idx) => ({v, idx})).filter(c => c.v === 'X');
+                           if(targets.length) handleMove(targets[0].idx);
+                        }, 800);
+                    }
+                } else {
+                    document.getElementById("modDesc").textContent = "No había nada que robar.";
+                }
+                break;
+            case 5: board[lastIdx] = board[lastIdx] === "X" ? "O" : "X"; break;
+            case 6: board = board.map(v => v === "-" ? "-" : ""); history.X = []; history.O = []; break;
+            case 7: 
+                if(history.X.length) board[history.X.pop()] = "";
+                if(history.O.length) board[history.O.pop()] = "";
+                break;
+            case 8:
+                let val = board[lastIdx]; board[lastIdx] = "";
+                let av = board.map((v, i) => i).filter(i => board[i] === "");
+                if(av.length) board[av[Math.floor(Math.random()*av.length)]] = val;
+                break;
+        }
+    }
+
+    function checkPostMod() {
+        if (checkWinner()) return;
+
+        if (extraTurn) {
+            extraTurn = false;
+            if (gameMode === 'bot' && currentPlayer === 'O') setTimeout(botMove, 500);
+        } else if (bonusUber === currentPlayer) {
+            bonusUber = null;
+            document.getElementById("modName").textContent = "MEJOR PIDO UN UBER";
+            document.getElementById("modDesc").textContent = "Bonus: Tiras de nuevo por ganar la ronda anterior.";
+            if (gameMode === 'bot' && currentPlayer === 'O') setTimeout(botMove, 500);
+        } else {
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            drawBoard();
+            if (gameMode === 'bot' && currentPlayer === "O") setTimeout(botMove, 500);
+        }
+    }
+
+    function checkWinner() {
+        const wins_c = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+        for (let l of wins_c) {
+            if (board[l[0]] && board[l[0]] !== "-" && board[l[0]] === board[l[1]] && board[l[0]] === board[l[2]]) {
+                setTimeout(() => finishRound(board[l[0]]), 100);
+                return true;
+            }
+        }
+        if (!board.includes("") || (board.every(c => c !== ""))) {
+            setTimeout(() => finishRound("Empate"), 100);
+            return true;
+        }
+        return false;
+    }
+
+    function finishRound(w) {
+        if (w !== "Empate") {
+            wins[w]++;
+            bonusUber = w;
+            alert(`¡El pasajero ${w} ganó esta ronda!`);
+        } else alert("Empate. ¡Nadie se mueve en el tráfico!");
+
+        if (wins.X === 2 || wins.O === 2 || round === 3) {
+            if (wins.X >= 2) alert("GANADOR FINAL: ¡X llegó a tiempo a su destino!");
+            else if (wins.O >= 2) alert("GANADOR FINAL: ¡O llegó a tiempo a su destino!");
+            else alert("DERROTA PARA AMBOS: Nadie llegó a tiempo");
+            resetGame();
+        } else {
+            round++;
+            board = Array(9).fill("");
+            history = { X: [], O: [] };
+            currentPlayer = "X";
+            drawBoard();
+        }
+    }
+
+    function resetGame() {
+        // 1. Reestablecer variables de estado
+        wins = { X: 0, O: 0 };
+        round = 1;
+        bonusUber = null;
+        extraTurn = false;
+        isStealing = false;
+        isLocked = false;
+        board = Array(9).fill("");
+        history = { X: [], O: [] };
+        currentPlayer = "X";
+
+        // 2. Limpiar la interfaz de mensajes
+        document.getElementById("modName").textContent = "VIAJE REINICIADO";
+        document.getElementById("modDesc").textContent = "El transporte está vacío. Selecciona un asiento.";
+        
+        // 3. Actualizar el tablero y marcadores visuales
+        drawBoard();
+    }
+
+    function botMove() {
+        if (isLocked || isStealing) return;
+        let targets = board.map((v, i) => i).filter(i => board[i] === "");
+        if(targets.length) handleMove(targets[Math.floor(Math.random()*targets.length)]);
+    }
+
+    drawBoard();
+</script>
+</body>
+</html>
